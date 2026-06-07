@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String?    @unique
+  username     String?    @unique
+  nickname     String
+  avatarUrl    String?    @map("avatar_url")
+  passwordHash String?    @map("password_hash")
+  role         UserRole   @default(VISITOR)
+  status       UserStatus @default(ACTIVE)
+  provider     String?
+  providerId   String?    @map("provider_id")
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  posts        Post[]
+  comments     Comment[]
+  messages     GuestbookMessage[]
+  refreshTokens RefreshToken[]
+  assets       Asset[]
+
+  @@unique([provider, providerId])
+  @@index([status])
+  @@map("users")
+}
+
+model Post {
+  id           String     @id @default(cuid())
+  title        String
+  slug         String     @unique
+  summary      String?
+  coverUrl     String?    @map("cover_url")
+  contentMd    String     @map("content_md")
+  contentHtml  String?    @map("content_html")
+  status       PostStatus @default(DRAFT)
+  visibility   Visibility @default(PUBLIC)
+  authorId     String     @map("author_id")
+  categoryId   String?    @map("category_id")
+  isTop        Boolean    @default(false) @map("is_top")
+  allowComment Boolean    @default(true) @map("allow_comment")
+  viewCount    Int        @default(0) @map("view_count")
+  likeCount    Int        @default(0) @map("like_count")
+  commentCount Int        @default(0) @map("comment_count")
+  publishedAt  DateTime?  @map("published_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+
+  author       User       @relation(fields: [authorId], references: [id])
+  category     Category?  @relation(fields: [categoryId], references: [id])
+  tags         PostTag[]
+  comments     Comment[]
+
+  @@index([status, publishedAt])
+  @@index([categoryId])
+  @@index([authorId])
+  @@map("posts")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  postCount   Int      @default(0) @map("post_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  posts       Post[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  color     String?
+  postCount Int      @default(0) @map("post_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  posts     PostTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  postId String @map("post_id")
+  tagId  String @map("tag_id")
+
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+model Comment {
+  id            String        @id @default(cuid())
+  postId        String        @map("post_id")
+  userId        String        @map("user_id")
+  parentId      String?       @map("parent_id")
+  rootId        String?       @map("root_id")
+  replyToUserId String?       @map("reply_to_user_id")
+  content       String
+  contentHtml   String?       @map("content_html")
+  status        ContentStatus @default(APPROVED)
+  ipHash        String?       @map("ip_hash")
+  userAgent     String?       @map("user_agent")
+  likeCount     Int           @default(0) @map("like_count")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@index([postId, status, createdAt])
+  @@index([rootId, status, createdAt])
+  @@index([parentId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model GuestbookMessage {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  parentId      String?       @map("parent_id")
+  rootId        String?       @map("root_id")
+  replyToUserId String?       @map("reply_to_user_id")
+  content       String
+  status        ContentStatus @default(APPROVED)
+  ipHash        String?       @map("ip_hash")
+  userAgent     String?       @map("user_agent")
+  likeCount     Int           @default(0) @map("like_count")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@index([rootId, status, createdAt])
+  @@index([parentId])
+  @@index([userId])
+  @@map("guestbook_messages")
+}
+
+model Like {
+  id         String         @id @default(cuid())
+  userId     String         @map("user_id")
+  targetType LikeTargetType @map("target_type")
+  targetId   String         @map("target_id")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@unique([userId, targetType, targetId])
+  @@map("likes")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model EmailVerificationCode {
+  id        String    @id @default(cuid())
+  email     String
+  codeHash  String    @map("code_hash")
+  scene     EmailCodeScene
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([email, scene])
+  @@map("email_verification_codes")
+}
+
+model Asset {
+  id         String   @id @default(cuid())
+  uploaderId String?  @map("uploader_id")
+  url        String
+  storageKey String   @map("storage_key")
+  mimeType   String   @map("mime_type")
+  size       Int
+  width      Int?
+  height     Int?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  uploader   User?    @relation(fields: [uploaderId], references: [id])
+
+  @@index([uploaderId])
+  @@map("assets")
+}
+
+model SiteSetting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
+
+enum UserRole {
+  VISITOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  DELETED
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ContentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+  DELETED
+}
+
+enum LikeTargetType {
+  POST
+  COMMENT
+  MESSAGE
+}
+
+enum EmailCodeScene {
+  LOGIN
+  BIND_EMAIL
+  RESET_PASSWORD
+}

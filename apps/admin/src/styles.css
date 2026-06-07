@@ -1,0 +1,49 @@
+body {
+  margin: 0;
+  background: #f5f7fb;
+  color: #1f2937;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.admin-shell {
+  min-height: 100vh;
+}
+
+.admin-aside {
+  border-right: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.admin-brand {
+  padding: 20px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.login-card {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.full-button {
+  width: 100%;
+}
