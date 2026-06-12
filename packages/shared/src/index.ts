@@ -40,6 +40,27 @@ export interface PostListItem {
   summary?: string | null;
   coverUrl?: string | null;
   publishedAt?: string | null;
+  category?: TaxonomyItem | null;
+  tags: TaxonomyItem[];
   viewCount: number;
   commentCount: number;
+}
+
+export interface PostDetail extends PostListItem {
+  contentHtml?: string | null;
+  contentMd: string;
+  updatedAt: string;
+}
+
+export interface TaxonomyItem {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface ArchiveMonth {
+  key: string;
+  year: number;
+  month: number;
+  posts: PostListItem[];
 }
