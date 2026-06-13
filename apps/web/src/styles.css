@@ -223,6 +223,14 @@ main {
   margin-top: 8px;
 }
 
+.article-body blockquote {
+  margin: 22px 0;
+  border-left: 4px solid #9cc3b7;
+  padding: 4px 0 4px 18px;
+  color: #52616f;
+  background: #f2f8f5;
+}
+
 .article-body code,
 .markdown-fallback {
   border-radius: 6px;

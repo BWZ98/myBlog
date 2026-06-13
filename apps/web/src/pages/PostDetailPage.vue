@@ -7,6 +7,7 @@ import { getPostBySlug } from "@/services/post.api";
 type ArticleBlock =
   | {
       type: "heading";
+      level: 2 | 3;
       text: string;
     }
   | {
@@ -14,7 +15,17 @@ type ArticleBlock =
       text: string;
     }
   | {
+      type: "quote";
+      text: string;
+    }
+  | {
+      type: "code";
+      code: string;
+      language?: string;
+    }
+  | {
       type: "list";
+      ordered: boolean;
       items: string[];
     };
 
@@ -43,6 +54,8 @@ function parseMarkdown(markdown: string): ArticleBlock[] {
   const blocks: ArticleBlock[] = [];
   const paragraphLines: string[] = [];
   const listItems: string[] = [];
+  let listOrdered = false;
+  let codeFence: { language?: string; lines: string[] } | null = null;
 
   function flushParagraph() {
     if (paragraphLines.length === 0) {
@@ -63,17 +76,61 @@ function parseMarkdown(markdown: string): ArticleBlock[] {
 
     blocks.push({
       type: "list",
+      ordered: listOrdered,
       items: [...listItems]
     });
     listItems.length = 0;
   }
 
+  function flushCodeFence() {
+    if (!codeFence) {
+      return;
+    }
+
+    blocks.push({
+      type: "code",
+      code: codeFence.lines.join("\n"),
+      language: codeFence.language
+    });
+    codeFence = null;
+  }
+
   for (const rawLine of markdown.split("\n")) {
     const line = rawLine.trim();
+
+    if (codeFence) {
+      if (line.startsWith("```")) {
+        flushCodeFence();
+      } else {
+        codeFence.lines.push(rawLine);
+      }
+      continue;
+    }
 
     if (!line) {
       flushParagraph();
       flushList();
+      continue;
+    }
+
+    if (line.startsWith("```")) {
+      flushParagraph();
+      flushList();
+      codeFence = {
+        language: line.slice(3).trim() || undefined,
+        lines: []
+      };
+      continue;
+    }
+
+    if (line.startsWith("# ")) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: "heading",
+        level: 2,
+        text: line.slice(2)
+      });
       continue;
     }
 
@@ -82,14 +139,51 @@ function parseMarkdown(markdown: string): ArticleBlock[] {
       flushList();
       blocks.push({
         type: "heading",
+        level: 2,
         text: line.slice(3)
+      });
+      continue;
+    }
+
+    if (line.startsWith("### ")) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: "heading",
+        level: 3,
+        text: line.slice(4)
+      });
+      continue;
+    }
+
+    if (line.startsWith("> ")) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: "quote",
+        text: line.slice(2)
       });
       continue;
     }
 
     if (line.startsWith("- ")) {
       flushParagraph();
+      if (listItems.length > 0 && listOrdered) {
+        flushList();
+      }
+      listOrdered = false;
       listItems.push(line.slice(2));
+      continue;
+    }
+
+    const orderedListMatch = line.match(/^\d+\.\s+(.+)$/);
+    if (orderedListMatch) {
+      flushParagraph();
+      if (listItems.length > 0 && !listOrdered) {
+        flushList();
+      }
+      listOrdered = true;
+      listItems.push(orderedListMatch[1]);
       continue;
     }
 
@@ -99,6 +193,7 @@ function parseMarkdown(markdown: string): ArticleBlock[] {
 
   flushParagraph();
   flushList();
+  flushCodeFence();
 
   return blocks;
 }
@@ -141,8 +236,14 @@ watch(
       </div>
       <div class="article-body">
         <template v-for="(block, index) in articleBlocks" :key="index">
-          <h2 v-if="block.type === 'heading'">{{ block.text }}</h2>
+          <h3 v-if="block.type === 'heading' && block.level === 3">{{ block.text }}</h3>
+          <h2 v-else-if="block.type === 'heading'">{{ block.text }}</h2>
           <p v-else-if="block.type === 'paragraph'">{{ block.text }}</p>
+          <blockquote v-else-if="block.type === 'quote'">{{ block.text }}</blockquote>
+          <pre v-else-if="block.type === 'code'"><code>{{ block.code }}</code></pre>
+          <ol v-else-if="block.ordered">
+            <li v-for="item in block.items" :key="item">{{ item }}</li>
+          </ol>
           <ul v-else>
             <li v-for="item in block.items" :key="item">{{ item }}</li>
           </ul>
