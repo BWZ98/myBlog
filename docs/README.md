@@ -13,3 +13,4 @@
 - [基础设施与部署模块](./modules/06-infrastructure.md)
 - [数据库与数据一致性设计](./modules/07-data-model.md)
 - [当前数据库表设计详解](./modules/08-current-table-design.md)
+- [部署运行手册](./modules/09-deployment-runbook.md)

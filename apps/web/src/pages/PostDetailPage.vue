@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
 import type { PostDetail } from "@myblog/shared";
 import { getPostBySlug } from "@/services/post.api";
 
@@ -32,6 +32,7 @@ type ArticleBlock =
 const route = useRoute();
 const loading = ref(false);
 const loadFailed = ref(false);
+const notFound = ref(false);
 const post = ref<PostDetail | null>(null);
 const slug = computed(() => String(route.params.slug ?? ""));
 const articleBlocks = computed(() => parseMarkdown(post.value?.contentMd ?? ""));
@@ -203,14 +204,20 @@ watch(
   async (currentSlug) => {
     loading.value = true;
     loadFailed.value = false;
+    notFound.value = false;
     post.value = null;
 
     try {
       post.value = await getPostBySlug(currentSlug);
       document.title = `${post.value.title} - MyBlog`;
-    } catch {
-      loadFailed.value = true;
-      document.title = "文章未找到 - MyBlog";
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "response" in error
+        ? (error as { response?: { status?: number } }).response?.status
+        : undefined;
+
+      notFound.value = status === 404;
+      loadFailed.value = !notFound.value;
+      document.title = notFound.value ? "文章未找到 - MyBlog" : "文章加载失败 - MyBlog";
     } finally {
       loading.value = false;
     }
@@ -222,7 +229,12 @@ watch(
 <template>
   <article class="content-page post-detail">
     <p v-if="loading" class="muted">文章加载中...</p>
-    <p v-else-if="loadFailed" class="state-message">这篇文章暂时不可访问。</p>
+    <section v-else-if="notFound" class="state-message">
+      <h1>文章没有找到</h1>
+      <p>这篇文章可能已经归档、删除，或者链接地址发生了变化。</p>
+      <RouterLink class="text-link" to="/archives">查看归档</RouterLink>
+    </section>
+    <p v-else-if="loadFailed" class="state-message">文章暂时加载失败，请稍后再试。</p>
 
     <template v-else-if="post">
       <div class="post-meta">
